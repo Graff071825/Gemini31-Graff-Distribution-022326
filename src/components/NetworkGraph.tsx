@@ -5,6 +5,8 @@ import { DeviceRecord } from '../App';
 interface NetworkGraphProps {
   data: DeviceRecord[];
   onNodeClick?: (node: { type: string; id: string; label: string }) => void;
+  accentColor: string;
+  theme: 'light' | 'dark';
 }
 
 interface Node extends d3.SimulationNodeDatum {
@@ -22,7 +24,14 @@ interface Link extends d3.SimulationLinkDatum<Node> {
   value: number;
 }
 
-export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick }) => {
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick, accentColor, theme }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -32,10 +41,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight || 400;
 
-    // Clear previous graph
     d3.select(svgRef.current).selectAll("*").remove();
 
-    // Build nodes and links
     const nodesMap = new Map<string, Node>();
     const linksMap = new Map<string, Link>();
 
@@ -81,7 +88,13 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
 
     const color = d3.scaleOrdinal<number, string>()
       .domain([1, 2, 3, 4, 5])
-      .range(['#00FF00', '#00cc00', '#009900', '#006600', '#003300']);
+      .range([
+        accentColor,
+        hexToRgba(accentColor, 0.8),
+        hexToRgba(accentColor, 0.6),
+        hexToRgba(accentColor, 0.4),
+        hexToRgba(accentColor, 0.2)
+      ]);
 
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink<Node, Link>(links).id(d => d.id).distance(40))
@@ -90,7 +103,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
       .force("collide", d3.forceCollide().radius(d => (d as Node).radius + 2));
 
     const link = svg.append("g")
-      .attr("stroke", "rgba(255,255,255,0.1)")
+      .attr("stroke", theme === 'dark' ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")
       .attr("stroke-opacity", 0.6)
       .selectAll("line")
       .data(links)
@@ -98,7 +111,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
       .attr("stroke-width", d => Math.sqrt(d.value));
 
     const node = svg.append("g")
-      .attr("stroke", "#000")
+      .attr("stroke", theme === 'dark' ? "#000" : "#fff")
       .attr("stroke-width", 1.5)
       .selectAll("circle")
       .data(nodes)
@@ -123,7 +136,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
       .attr("dy", 3)
       .attr("dx", d => d.radius + 2)
       .attr("font-size", "8px")
-      .attr("fill", "rgba(255,255,255,0.5)")
+      .attr("fill", theme === 'dark' ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)")
       .attr("font-family", "monospace")
       .style("pointer-events", "none")
       .text(d => d.label);
@@ -171,7 +184,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, onNodeClick })
     return () => {
       simulation.stop();
     };
-  }, [data]);
+  }, [data, accentColor, theme]);
 
   return (
     <div ref={containerRef} className="w-full h-full min-h-[400px]">
